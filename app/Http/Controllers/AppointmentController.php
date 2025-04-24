@@ -2,22 +2,32 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Appointment;
+use App\Http\Requests\AppointmentRequest;
 use Illuminate\Http\Request;
+use App\Services\AppointmentService;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\AppointmentsExport;
 
 class AppointmentController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    protected $service;
+
+    public function __construct(AppointmentService $service)
     {
-        $appointments = Appointment::orderBy('appointment_time', 'asc')->get();
-        return view('appointments.index', compact('appointments'));       
+        $this->service = $service;
     }
 
     /**
-     * Show the form for creating a new resource.
+     * عرض جميع المواعيد
+     */
+    public function index()
+    {
+        $appointments = $this->service->all();
+        return view('appointments.index', compact('appointments'));
+    }
+
+    /**
+     * عرض نموذج إضافة موعد جديد
      */
     public function create()
     {
@@ -25,60 +35,57 @@ class AppointmentController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * تخزين موعد جديد
      */
-    public function store(Request $request)
+    public function store(AppointmentRequest $request)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'appointment_time' => 'required|date',
-            'description' => 'nullable|string',
-        ]);
+    
 
-        Appointment::create($request->all());
+        $this->service->create($request->all());
+
         return redirect()->route('appointments.index')->with('success', 'تم إضافة الموعد بنجاح');
     }
 
     /**
-     * Display the specified resource.
-     */
-    public function show(Appointment $appointment)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
+     * عرض نموذج تعديل موعد
      */
     public function edit($id)
     {
-        $appointment = Appointment::findOrFail($id);
+        $appointment = $this->service->find($id);
         return view('appointments.edit', compact('appointment'));
     }
 
     /**
-     * Update the specified resource in storage.
+     * تحديث بيانات الموعد
      */
-    public function update(Request $request, $id)
+    public function update(AppointmentRequest $request, $id)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'appointment_time' => 'required|date',
-            'description' => 'nullable|string',
-        ]);
+   
 
-        $appointment = Appointment::findOrFail($id);
-        $appointment->update($request->all());
+        $this->service->update($id, $request->all());
+
         return redirect()->route('appointments.index')->with('success', 'تم تعديل الموعد بنجاح');
     }
 
     /**
-     * Remove the specified resource from storage.
+     * حذف الموعد
      */
     public function destroy($id)
     {
-        $appointment = Appointment::findOrFail($id);
-        $appointment->delete();
+        $this->service->delete($id);
         return redirect()->route('appointments.index')->with('success', 'تم حذف الموعد بنجاح');
+    }
+
+    /**
+     * الدالة show غير مستخدمة حاليًا
+     */
+    public function show($id)
+    {
+        //
+    }
+
+    public function export()
+    {
+        return Excel::download(new AppointmentsExport, 'appointments'.now()->format('Y-m-d-H-i-s').'.xlsx');
     }
 }
